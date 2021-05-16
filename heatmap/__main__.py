@@ -8,7 +8,6 @@ from pyproj import Transformer
 from typing import List
 import numpy
 import time
-import pandas
 import psutil
 from multiprocessing import Pool
 import math
@@ -106,11 +105,27 @@ def get_point_grid(
     )
     intervals = numpy.arange(x_min, x_max + increment, increment)
 
-    list_of_x_intervals = list(zip(intervals[:-1], intervals[1:]))
+    difference = x_max - x_min
+    subintervals = math.floor(difference / spacing_in_meters)
+    subintervals_per_interval, excess_subintervals = divmod(subintervals, worker_count)
+    interval_lengths = [
+        spacing_in_meters * subintervals_per_interval
+        + spacing_in_meters * (i < excess_subintervals)
+        for i in range(worker_count)
+    ]
+
+    intervals = [x_min] * (worker_count + 1)
+
+    for i, interval_length in enumerate(interval_lengths):
+        intervals[i + 1] = intervals[i] + interval_length
+
+    list_of_intervals = list(zip(intervals[:-1], intervals[1:]))
+
+    list_of_intervals = list(zip(intervals[:-1], intervals[1:]))
 
     parameters = [
         [*xs, y_min, y_max, spacing_in_meters, proxy_polygon_to_intersect]
-        for xs in list_of_x_intervals
+        for xs in list_of_intervals
     ]
 
     with Pool(worker_count) as pool:
@@ -119,7 +134,7 @@ def get_point_grid(
         )
 
     end = time.time()
-    print("time 3", end - start)
+    print("time", end - start)
 
     return results
 
@@ -128,16 +143,20 @@ def do_the_shit():
 
     hsl_polygon: Polygon = get_hsl_polygon()
 
-    spacing = 300
+    spacing = 100
 
     hsl_dot_grid: List[Polygon] = get_point_grid(
         *hsl_polygon.bounds, spacing, hsl_polygon
     )
-    print("len 4:", len(hsl_dot_grid))
+    print("Amount of points in the polygon:", len(hsl_dot_grid))
+
+    p = gpd.GeoSeries(hsl_polygon)
+    p.plot()
+
     xs = [point.x for point in hsl_dot_grid]
     ys = [point.y for point in hsl_dot_grid]
-    plt.figure()
     plt.scatter(xs, ys, color="orange", s=rcParams["lines.markersize"] ** 0.5)
+    plt.show()
 
 
 if __name__ == "__main__":
