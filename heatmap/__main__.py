@@ -86,8 +86,6 @@ def get_point_grid(
     print("start")
     start = time.time()
 
-    worker_count = psutil.cpu_count(logical=True)
-
     to_proxy_transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
 
     x_min, y_min = to_proxy_transformer.transform(lat_min, lon_min)
@@ -99,11 +97,7 @@ def get_point_grid(
         polygon_to_intersect,
     )
 
-    increment = (
-        math.ceil((x_max - x_min) / (spacing_in_meters * worker_count))
-        * spacing_in_meters
-    )
-    intervals = numpy.arange(x_min, x_max + increment, increment)
+    worker_count = psutil.cpu_count(logical=True)
 
     difference = x_max - x_min
     subintervals = math.floor(difference / spacing_in_meters)
@@ -119,13 +113,11 @@ def get_point_grid(
     for i, interval_length in enumerate(interval_lengths):
         intervals[i + 1] = intervals[i] + interval_length
 
-    list_of_intervals = list(zip(intervals[:-1], intervals[1:]))
-
-    list_of_intervals = list(zip(intervals[:-1], intervals[1:]))
+    interval_pairs = list(zip(intervals[:-1], intervals[1:]))
 
     parameters = [
         [*xs, y_min, y_max, spacing_in_meters, proxy_polygon_to_intersect]
-        for xs in list_of_intervals
+        for xs in interval_pairs
     ]
 
     with Pool(worker_count) as pool:
@@ -143,7 +135,7 @@ def do_the_shit():
 
     hsl_polygon: Polygon = get_hsl_polygon()
 
-    spacing = 100
+    spacing = 200
 
     hsl_dot_grid: List[Polygon] = get_point_grid(
         *hsl_polygon.bounds, spacing, hsl_polygon
