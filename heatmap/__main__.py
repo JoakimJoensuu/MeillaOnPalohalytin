@@ -1,4 +1,4 @@
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon, Point, shape
 from shapely.ops import unary_union, transform
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
@@ -8,9 +8,11 @@ from pyproj import Transformer
 from typing import List
 import numpy
 import time
-import psutil
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import math
+from geopy.geocoders import Nominatim
+import requests
+import json
 
 
 def get_hsl_polygon() -> Polygon:
@@ -97,7 +99,7 @@ def get_point_grid(
         polygon_to_intersect,
     )
 
-    worker_count = psutil.cpu_count(logical=True)
+    worker_count = cpu_count()
 
     difference = x_max - x_min
     subintervals = math.floor(difference / spacing_in_meters)
@@ -135,7 +137,7 @@ def do_the_shit():
 
     hsl_polygon: Polygon = get_hsl_polygon()
 
-    spacing = 200
+    spacing = 100
 
     hsl_dot_grid: List[Polygon] = get_point_grid(
         *hsl_polygon.bounds, spacing, hsl_polygon
@@ -151,11 +153,42 @@ def do_the_shit():
     plt.show()
 
 
-if __name__ == "__main__":
-    # geolocator = Nominatim(user_agent="Google Maps")
-    # location = geolocator.geocode("Pietari Kalmin Katu 1, Helsinki, Finland")
-    # print(location.latitude, location.longitude)
+def api_for_minutes(minutes):
+    api_url = "http://localhost:8080/otp/routers/hsl/isochrone?fromPlace={},{}&mode=WALK,TRAM,TRANSIT,BUS,SUBWAY,RAIL,FERRY&time=4:00pm&date=05-31-2021"
+    for minute in minutes:
+        api_url = f"{api_url}&cutoffSec={minute*60}"
 
-    # location2 = geolocator.geocode("Siilitie 8, Helsinki, Finland")
-    # print(location2.latitude, location2.longitude)
+    return api_url
+
+
+def plot_heatmap(location):
+
+    api_url = api_for_minutes(range(6, 240, 1))
+
+    featurecollection = requests.get(
+        api_url.format(location.latitude, location.longitude)
+    ).json()
+
+    with open("temp.txt", "w") as outfile:
+        json.dump(featurecollection, outfile, indent=2)
+
+    gdf = gpd.GeoDataFrame.from_features(featurecollection["features"])
+
+    gdf.plot(column="time")
+
+
+if __name__ == "__main__":
+    geolocator = Nominatim(user_agent="Google Maps")
+    location = geolocator.geocode("Pietari Kalmin Katu 1, Helsinki, Finland")
+
+    plot_heatmap(location)
+
+    location = geolocator.geocode("Siilitie 8, Helsinki, Finland")
+
+    plot_heatmap(location)
+
+    plt.show()
+
+    exit()
+
     do_the_shit()
