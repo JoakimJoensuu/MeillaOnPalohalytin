@@ -23,7 +23,7 @@ from requests import get
 
 ISOCHRONE_REQUEST_BASE_URL = "http://localhost:8080/otp/routers/hsl/isochrone"
 
-ISOCHRONE_REQUEST_URL_PARAMETERS = "&precisionMeters=100&mode=WALK,TRAM,TRANSIT,BUS,SUBWAY,RAIL,FERRY&time=10:00am&date=08-08-2021"
+ISOCHRONE_REQUEST_URL_PARAMETERS = "&precisionMeters=100&mode=WALK,TRAM,TRANSIT,BUS,SUBWAY,RAIL,FERRY&time=10:00am&date=10-10-2021"
 
 
 def round_down(value, decimals):
@@ -204,7 +204,11 @@ def calculate_mean_times(travel_times: GeoDataFrame) -> GeoDataFrame:
 
 def request_isochrone(request_url: str) -> GeoDataFrame:
 
-    print(get(request_url).request)
+    print(request_url)
+
+    print(get(request_url))
+
+    print(get(request_url).json())
 
     isochrone: GeoDataFrame = (
         GeoDataFrame.from_features(get(request_url).json().get("features"))
