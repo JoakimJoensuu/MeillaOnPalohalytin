@@ -1,4 +1,4 @@
-Set date to heatmap/__main__.py line 26. I'm too lazy to code functionality to do that.
+Set date to `heatmap/__main__.py` line 26. I'm too lazy to write functionality for that.
 
 
 ```console
